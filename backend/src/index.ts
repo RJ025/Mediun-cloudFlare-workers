@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
-import { sign } from "hono/jwt";
+import { sign, verify } from "hono/jwt";
 
 const app = new Hono<{
   Bindings : {
@@ -9,6 +9,25 @@ const app = new Hono<{
     JWT_SECRET : string
   }
 }>();
+
+app.use('/api/v1/blog/*' , async(c , next)=>{
+  /*
+   *get the header
+   * verify the header
+   * if the header is correct  , we need can proceed
+   * if not we return the user a 403 status code 
+   */
+
+   const header = c.req.header('Authorization') || "";
+   const response =  await verify(header , c.env.JWT_SECRET)
+   if(response.id) {
+    next();
+   } else {
+    c.status(403);
+    return c.json({error : 'unauthorized'})
+   }
+
+})
 
 app.post('/api/v1/signup' , async (c) => {
   const prisma = new PrismaClient({
@@ -38,24 +57,26 @@ app.post('/api/v1/signup' , async (c) => {
   } catch(e) {
     return c.status(403)
   }
-  // console.log(body)
-  // return c.text("hello")
-  
+
 })
 
 app.post('/api/v1/signin' , async (c) => {
 
   const prisma = new PrismaClient({
+
     datasourceUrl : c.env?.DATABASE_URL
   }).$extends(withAccelerate())
 
   const body = await c.req.json();
-  const user = await prisma.user.findUnique({
-    // where : {
-    //   email : {
-    //     contains : body.email
-    //   }
-    // }
+  const user = await prisma.user.findUniqueOrThrow({
+    where : {
+      email : body.email ,
+      password : body.password
+    },
+    select : {
+      id : true ,
+      name : true
+    }
   })
 
   if(!user) {
@@ -63,10 +84,10 @@ app.post('/api/v1/signin' , async (c) => {
     return c.json({
       error : "user not found"
     })
-  }
+  };
   
-  const jwt = await sign({id : user.id} , c.env.JWT_SECRET)
-  return c.json({jwt})
+  const jwt = await sign({id : user.id} , c.env.JWT_SECRET);
+  return c.json({jwt , name : user.name})
 })
 
 app.post('/api/v1/blog/:id' , (c)=>{
@@ -90,4 +111,5 @@ app.get('/api/v1/blog:id' , (c)=>{
   return c.text('blog')
 })
 
+export default app
 
