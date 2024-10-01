@@ -6,7 +6,6 @@ import { useParams } from "react-router-dom"
 import { BACKEND_URL } from "../../config"
 import { storeBlogCache } from "../utils/blogSlice"
 import { Avatar } from "../components/BlogCard"
-import BlogSkeleton from "../components/BlogSkeleton"
 import Loader from "../components/Loader"
 
 interface Blog {

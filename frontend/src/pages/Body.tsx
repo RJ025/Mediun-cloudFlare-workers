@@ -1,4 +1,3 @@
-import { Appbar } from "../components/Appbar"
 import Blogs from "./Blogs"
 
 const Body = () => {
